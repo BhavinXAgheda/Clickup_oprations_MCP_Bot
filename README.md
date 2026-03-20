@@ -67,8 +67,8 @@ Create a `.env` file in the project root:
 
 ```
 CLICKUP_API_TOKEN=pk_your_token_here
-CLICKUP_WORKSPACE_ID=90161069568
-CLICKUP_LIST_ID=901613649779
+CLICKUP_WORKSPACE_ID=901
+CLICKUP_LIST_ID=901
 ```
 
 **How to find each value:**
