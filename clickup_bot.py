@@ -145,12 +145,14 @@ def update_task(
     priority: int = None,
     due_date: str = None,
     assignee: str = None,
+    description: str = None,
 ) -> str:
     """
     Update an existing task in ClickUp.
     Provide task_id and any fields you want to change.
     Priority: 1=urgent, 2=high, 3=normal, 4=low
     due_date: YYYY-MM-DD format
+    description: set to empty string "" to clear description
     """
 
     body = {}
@@ -170,7 +172,8 @@ def update_task(
             body["assignees"] = {"add": [user_id]}  
         else:
             return f"Could not find member '{assignee}'. Check the name and try again."
-
+    if description:  # allow clearing description with empty string
+        body["description"] = description
     if not body:
         return "Nothing to update. Please provide at least one field to change."
 
@@ -182,6 +185,7 @@ def update_task(
         f"  ID:     {data['id']}\n"
         f"  Status: {data['status']['status']}"
         f"  assignees: {', '.join(a['username'] for a in data.get('assignees', [])) or 'unassigned'}"
+        f"  description: {data.get('description', 'No description')}"
     )
 
 @mcp.tool()
@@ -199,6 +203,108 @@ def list_members() -> str:
             lines.append(f"{username} (ID: {user['id']} | {email})")
 
     return "\n".join(lines) if lines else "No members found."
+
+@mcp.tool()
+def get_task_details(task_id: str) -> str:
+    """Get full details of a specific task by its ID."""
+
+    data = clickup_get(f"/task/{task_id}")
+
+    # basic fields
+    name        = data.get("name", "N/A")
+    status      = data["status"]["status"].upper()
+    priority    = (data.get("priority") or {}).get("priority", "none")
+    description = data.get("description", "No description")
+    assignees   = ", ".join(a["username"] for a in data.get("assignees", [])) or "unassigned"
+
+    # due date
+    due_ts = data.get("due_date")
+    if due_ts:
+        from datetime import datetime
+        due_date = datetime.fromtimestamp(int(due_ts) / 1000).strftime("%Y-%m-%d")
+    else:
+        due_date = "not set"
+
+    # subtasks and comments count
+    subtasks = data.get("subtasks", [])
+    subtask_lines = "\n".join(
+        f"  - [{s['status']['status'].upper()}] {s['name']} (ID: {s['id']})"
+        for s in subtasks
+    ) or "  none"
+
+    return (
+        f"Name        : {name}\n"
+        f"ID          : {task_id}\n"
+        f"Status      : {status}\n"
+        f"Priority    : {priority}\n"
+        f"Assignees   : {assignees}\n"
+        f"Due Date    : {due_date}\n"
+        f"Description : {description}\n"
+        f"Subtasks    :\n{subtask_lines}"
+    )
+
+def clickup_delete(path: str):
+    with httpx.Client() as client:
+        res = client.delete(f"{BASE_URL}{path}", headers=HEADERS)
+        res.raise_for_status()
+        return True
+
+
+@mcp.tool()
+def delete_task(task_id: str) -> str:
+    """Permanently delete a task by its ID."""
+
+    # fetch name first so confirmation is meaningful
+    data = clickup_get(f"/task/{task_id}")
+    task_name = data.get("name", "Unknown")
+
+    clickup_delete(f"/task/{task_id}")
+
+    return (
+        f"Task deleted successfully.\n"
+        f"  Name : {task_name}\n"
+        f"  ID   : {task_id}"
+    )
+
+@mcp.tool()
+def create_subtask(
+    parent_task_id: str,
+    name: str,
+    description: str = "",
+    assignee: str = None,
+    priority: int = None,
+) -> str:
+    """
+    Create a subtask under an existing task.
+    assignee: person's name or username e.g. 'Bhavin'
+    priority: 1=urgent, 2=high, 3=normal, 4=low
+    """
+
+    body = {
+        "name": name,
+        "parent": parent_task_id
+    }
+
+    if description:
+        body["description"] = description
+    if priority:
+        body["priority"] = priority
+    if assignee:
+        user_id = get_member_id(assignee)
+        if user_id:
+            body["assignees"] = [user_id]
+        else:
+            return f"Could not find member '{assignee}'. Check the name and try again."
+
+    data = clickup_post(f"/list/{LIST_ID}/task", body)
+
+    return (
+        f"Subtask created successfully.\n"
+        f"  Name      : {data['name']}\n"
+        f"  ID        : {data['id']}\n"
+        f"  Parent ID : {parent_task_id}\n"
+        f"  Status    : {data['status']['status']}"
+    )
 # ── Run ───────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
