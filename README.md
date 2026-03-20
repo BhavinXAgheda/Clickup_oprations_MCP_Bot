@@ -12,6 +12,9 @@ This server bridges Claude and ClickUp. Instead of opening ClickUp manually, you
 - *"Create an urgent bug report for the login API timeout, assign it to Bhavin"*
 - *"Mark task 86abc as complete"*
 - *"Who are the members in my workspace?"*
+- *"Get full details of task 86abc"*
+- *"Delete task 86abc"*
+- *"Create a subtask under task 86abc: Write unit tests, assign to Bhavin"*
 
 ---
 
@@ -41,7 +44,7 @@ Clickup_Oprations_MCP/
 ### 1. Clone the project
 
 ```bash
-git clone https://github.com/your-username/Clickup_Oprations_MCP.git
+git clone https://github.com/BhavinXAgheda/Clickup_oprations_MCP_Bot.git
 cd Clickup_Oprations_MCP
 ```
 
@@ -111,16 +114,26 @@ Fully quit and reopen Claude Desktop after saving.
 
 ## Available Tools
 
+### Core Tools
+
 | Tool | What it does | Example prompt |
 |---|---|---|
-| `get_tasks` | List tasks, optionally filtered | *"Show me all in-progress tasks"* |
-| `create_task` | Create a new task | *"Create a high priority task: Fix payment bug"* |
-| `update_task` | Update status, priority, name, due date | *"Mark task 86abc as done"* |
+| `get_tasks` | List tasks, optionally filtered by status or assignee | *"Show me all in-progress tasks"* |
+| `create_task` | Create a new task with optional assignee, priority, due date | *"Create a high priority task: Fix payment bug"* |
+| `update_task` | Update status, priority, name, due date, or assignee | *"Mark task 86abc as done"* |
 | `add_comment` | Add a comment to a task | *"Comment on task 86abc: fix deployed"* |
-| `search_tasks` | Search tasks by keyword | *"Find all tasks about authentication"* |
-| `list_members` | List all workspace members | *"Who is in my workspace?"* |
-| `get_spaces` | List all spaces | *"Show me all spaces"* |
-| `get_lists` | List all lists in a space | *"What lists are in the Engineering space?"* |
+| `search_tasks` | Search tasks across workspace by keyword | *"Find all tasks about authentication"* |
+| `list_members` | List all workspace members with IDs | *"Who is in my workspace?"* |
+| `get_spaces` | List all spaces in the workspace | *"Show me all spaces"* |
+| `get_lists` | List all lists inside a space | *"What lists are in the Engineering space?"* |
+
+### Level 1 Tools (v1.0)
+
+| Tool | What it does | Example prompt |
+|---|---|---|
+| `get_task_details` | Get full details of a specific task including subtasks | *"Get full details of task 86abc"* |
+| `delete_task` | Permanently delete a task by ID | *"Delete task 86abc"* |
+| `create_subtask` | Create a subtask nested under a parent task | *"Create subtask under 86abc: Write unit tests"* |
 
 ---
 
@@ -166,6 +179,15 @@ You can test each tool directly from the terminal:
 # Update a task
 .venv/bin/python -c "from clickup_bot import update_task; print(update_task('TASK_ID', status='complete'))"
 
+# Get full task details
+.venv/bin/python -c "from clickup_bot import get_task_details; print(get_task_details('TASK_ID'))"
+
+# Delete a task
+.venv/bin/python -c "from clickup_bot import delete_task; print(delete_task('TASK_ID'))"
+
+# Create a subtask
+.venv/bin/python -c "from clickup_bot import create_subtask; print(create_subtask('PARENT_TASK_ID', 'Write unit tests', assignee='Bhavin'))"
+
 # List members
 .venv/bin/python -c "from clickup_bot import list_members; print(list_members())"
 ```
@@ -194,6 +216,14 @@ You can test each tool directly from the terminal:
 - Verify your `CLICKUP_LIST_ID` is correct
 - Check that the list actually has tasks in ClickUp
 
+**Delete not working:**
+- Make sure the task ID is correct — get it from `get_tasks` output
+- Verify your API token has permission to delete tasks in ClickUp
+
+**Subtask not appearing:**
+- Subtasks require a valid parent task ID
+- Use `get_task_details` on the parent to confirm the subtask was created
+
 ---
 
 ## Security
@@ -201,6 +231,25 @@ You can test each tool directly from the terminal:
 - Never commit your `.env` file to version control
 - Add `.env` to your `.gitignore`
 - Rotate your API token from ClickUp settings if it is ever exposed
+
+---
+
+## Changelog
+
+### v1.0
+- Added `get_task_details` — fetch full task info including subtasks
+- Added `delete_task` — permanently delete a task by ID
+- Added `create_subtask` — create nested subtasks under a parent task
+
+### v0.1 — Initial Release
+- `get_tasks` — list and filter tasks
+- `create_task` — create tasks with assignee by name
+- `update_task` — update status, priority, due date, assignee
+- `add_comment` — add comments to tasks
+- `search_tasks` — keyword search across workspace
+- `list_members` — list all workspace members
+- `get_spaces` — list all spaces
+- `get_lists` — list all lists in a space
 
 ---
 
